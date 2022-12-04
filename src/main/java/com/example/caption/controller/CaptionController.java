@@ -7,6 +7,8 @@ import com.example.caption.grpc.caption.CaptionReply;
 import com.example.caption.grpc.caption.CaptionRequest;
 import com.example.caption.grpc.caption.CaptionServiceGrpc;
 import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
+import net.coobird.thumbnailator.util.ThumbnailatorUtils;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.apache.tomcat.util.Diagnostics;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
@@ -19,6 +21,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -58,15 +62,21 @@ public class CaptionController {
 //        long size = file.getSize();
 //        log.debug("filename: {}.", filename);
 //        log.debug("file size: {}.", size);
-        String ext = orgFilename.substring(orgFilename.lastIndexOf('.'));
-        String newFilename = UUID.randomUUID().toString() + ext;
+//        String ext = orgFilename.substring(orgFilename.lastIndexOf('.'));
+        String newFilename = UUID.randomUUID().toString() + ".jpg";
 
 
         File saveDir = getSaveDir();
 
         File savePath = new File(saveDir, newFilename);
         try {
-            file.transferTo(savePath);
+            // 压缩图像并且保存
+            BufferedImage img = ImageIO.read(file.getInputStream());
+            Thumbnails.of(img)
+                    .size(img.getWidth(), img.getHeight())
+                    .outputFormat(".jpg")
+                    .toFile(savePath);
+//            file.transferTo(savePath);
         } catch (IOException e) {
 //            throw new RuntimeException("文件保存出现错误！", e);
             response.put("message", "文件保存出现错误！");
@@ -76,8 +86,8 @@ public class CaptionController {
         hashcode += md5.digestHex(lang);
         if (Boolean.TRUE.equals(redisClient.hasKey(hashcode))) {
 //            String caption = redisClient.boundValueOps(hashcode).get();
-            String caption = (String)redisClient.boundHashOps(hashcode).get("caption");
-            String url = (String)redisClient.boundHashOps(hashcode).get("url");
+            String caption = (String) redisClient.boundHashOps(hashcode).get("caption");
+            String url = (String) redisClient.boundHashOps(hashcode).get("url");
             log.info("cache命中！");
             response.put("message", "cache命中！");
             response.put("caption", caption);
@@ -106,7 +116,7 @@ public class CaptionController {
     public ResponseEntity<Map<String, Object>> getCaptionByURL(String url, String lang) {
 
         Map<String, Object> response = new HashMap<>();
-        if(lang == null) lang = "en";
+        if (lang == null) lang = "en";
 
         // 计算url的md5码，查看缓存是否存在
         String hashcode = md5.digestHex(url);
@@ -114,8 +124,8 @@ public class CaptionController {
         if (Boolean.TRUE.equals(redisClient.hasKey(hashcode))) {
             log.info("cache 命中！");
 //            String caption = redisClient.opsForValue().get(hashcode);
-            String caption = (String)redisClient.boundHashOps(hashcode).get("caption");
-            String imageUrl = (String)redisClient.boundHashOps(hashcode).get("url");
+            String caption = (String) redisClient.boundHashOps(hashcode).get("caption");
+            String imageUrl = (String) redisClient.boundHashOps(hashcode).get("url");
             response.put("message", "cache命中！");
             response.put("caption", caption);
             response.put("url", imageUrl);
@@ -124,22 +134,33 @@ public class CaptionController {
 
 
         // 生成保存的路径
-        String ext = url.substring(url.lastIndexOf('.'));
-        String newFilename = UUID.randomUUID().toString() + ext;
+//        String ext = url.substring(url.lastIndexOf('.'));
+        // 压缩后的图像总是jpg
+        String newFilename = UUID.randomUUID().toString() + ".jpg";
         File saveDir = getSaveDir();
         File savePath = new File(saveDir, newFilename);
 
-        // 下载文件到本地
-        try (InputStream is = new URL(url).openStream();
-             OutputStream os = Files.newOutputStream(savePath.toPath())) {
-            IOUtils.copy(is, os);
-        } catch (MalformedURLException e) {
-            response.put("message", "url出现错误！");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        try {
+            BufferedImage img = ImageIO.read(new URL(url));
+            Thumbnails.of(img)
+                    .size(img.getWidth(), img.getHeight())
+                    .outputFormat(".jpg")
+                    .toFile(savePath);
         } catch (IOException e) {
-            response.put("message", "下载文件出现错误！");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            throw new RuntimeException(e);
         }
+
+        // 下载文件到本地
+//        try (InputStream is = new URL(url).openStream();
+//             OutputStream os = Files.newOutputStream(savePath.toPath())) {
+//            IOUtils.copy(is, os);
+//        } catch (MalformedURLException e) {
+//            response.put("message", "url出现错误！");
+//            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+//        } catch (IOException e) {
+//            response.put("message", "下载文件出现错误！");
+//            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+//        }
 //            throw new RuntimeException("根据url下载文件出现错误！", e);
         String imageUrl = "/images/" + savePath.getParentFile().getName() + "/" + savePath.getName();
 
@@ -160,9 +181,9 @@ public class CaptionController {
         CaptionRequest request = CaptionRequest.newBuilder().setImgPath(imgPath).build();
         CaptionReply reply = null;
         if ("zh".equals(lang)) {
-           reply = captionChineseService.getCaption(request);
+            reply = captionChineseService.getCaption(request);
         } else if ("en".equals(lang)) {
-           reply = captionService.getCaption(request);
+            reply = captionService.getCaption(request);
         } else {
             throw new RuntimeException("不支持的语言类型：" + lang);
         }
