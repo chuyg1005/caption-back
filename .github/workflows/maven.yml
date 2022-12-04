@@ -1,0 +1,48 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: macos-11
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'zulu'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -B package -Dmaven.test.skip=true --file pom.xml
+      
+    - name: deploy
+      uses: easingthemes/ssh-deploy@v2.1.5
+      env:
+          #私钥
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          #SCp参数
+          ARGS: "-rltgoDzvO --delete"
+          #源目录
+          SOURCE: "./target/*.jar"
+          #服务器Ip:换成你的服务器iP
+          REMOTE_HOST:  ${{ secrets.REMOTE_HOST }}
+          #用户
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          #目标地址
+          TARGET: ${{ secrets.REMOTE_TARGET }}
+
