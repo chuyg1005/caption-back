@@ -74,7 +74,7 @@ public class CaptionController {
             BufferedImage img = ImageIO.read(file.getInputStream());
             Thumbnails.of(img)
                     .size(img.getWidth(), img.getHeight())
-                    .outputFormat(".jpg")
+                    .outputFormat("jpg")
                     .toFile(savePath);
 //            file.transferTo(savePath);
         } catch (IOException e) {
@@ -144,7 +144,7 @@ public class CaptionController {
             BufferedImage img = ImageIO.read(new URL(url));
             Thumbnails.of(img)
                     .size(img.getWidth(), img.getHeight())
-                    .outputFormat(".jpg")
+                    .outputFormat("jpg")
                     .toFile(savePath);
         } catch (IOException e) {
             throw new RuntimeException(e);
