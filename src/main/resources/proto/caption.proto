@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package grpc;
+option java_package = "com.example.caption.grpc.caption";
+option java_outer_classname = "CaptionServiceProto";
+option java_multiple_files = true;
+
+service CaptionService {
+  rpc getCaption(CaptionRequest) returns (CaptionReply) {}
+}
+
+message CaptionRequest {
+  string imgPath = 1;
+  //  string modelName = 2;
+}
+
+message CaptionReply {
+  string caption = 1;
+}

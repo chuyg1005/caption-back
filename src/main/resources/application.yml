@@ -1,0 +1,31 @@
+server:
+  port: 19880
+  address: 127.0.0.1
+logging:
+  level:
+    root: info
+    com.example.caption.controller: debug
+grpc:
+  client:
+    captionService:
+      negotiation-type: PLAINTEXT
+      address: static://localhost:9091
+
+    captionChineseService:
+      negotiation-type: PLAINTEXT
+      address: static://localhost:9092
+
+file:
+  upload:
+    rootDir: /home/chuyg/tmp
+
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+  servlet:
+    multipart:
+      enabled: true #是否启用http上传处理
+      max-file-size: 10MB #设置单个文件最大长度
+      max-request-size: 100MB #最大请求文件的大小
